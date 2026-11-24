@@ -29,7 +29,7 @@ make clean
 ## Repository, distribuzioni e risorse utilizzate
 
 - **Disassembly di base:** [pret/poketcg](https://github.com/pret/poketcg) — codice sorgente originale decompilato di Pokémon Trading Card Game (GBC).
-- **Distribuzione / espansione Neo (`Pokemon-TCG-Neo`):** set *Neo Genesis*, *Neo Revelation* e *Neo Destiny* (dati e liste carte in `tools/neo_genesis_cards.json`, `tools/neo_revelation_cards.json`, `tools/neo_destiny_cards.json`).
-- **Distribuzione / set Team Rocket:** [pkmncards.com — Team Rocket](https://pkmncards.com/set/team-rocket/) (elenco e artwork estratti tramite `tools/download_rocket_cards.py`, `tools/team_rocket_cards.json`, `tools/generate_rocket_cards_gfx.py` e `tools/generate_rocket_assets.py`).
+- **Distribuzione / espansione Neo:** [RealCataclyptic/Pokemon-TCG-Neo](https://github.com/RealCataclyptic/Pokemon-TCG-Neo) — set *Neo Genesis*, *Neo Revelation* e *Neo Destiny* (dati e liste carte in `tools/neo_genesis_cards.json`, `tools/neo_revelation_cards.json`, `tools/neo_destiny_cards.json`).
+- **Distribuzione / set Team Rocket:** [pret/poketcg2](https://github.com/pret/poketcg2) e [pkmncards.com — Team Rocket](https://pkmncards.com/set/team-rocket/) (elenco e artwork estratti tramite `tools/download_rocket_cards.py`, `tools/team_rocket_cards.json`, `tools/generate_rocket_cards_gfx.py` e `tools/generate_rocket_assets.py`).
 - **Sorgente immagini e scansioni carte:** [pkmncards.com](https://pkmncards.com/) (utilizzato per le grafiche dei set Team Rocket e Neo).
 - **Toolchain di assemblaggio:** [RGBDS](https://github.com/gbdev/rgbds) (inclusa in `tools/rgbds/bin`).
