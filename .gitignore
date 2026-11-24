@@ -1,0 +1,51 @@
+# precompiled python
+*.pyc
+__pycache__/
+
+# python virtual environments
+.venv/
+venv/
+
+# compiled object files
+*.o
+
+# roms & patches
+*.gbc
+*.gb
+*.patch
+
+# rgbds extras
+*.map
+*.sym
+
+# save game files
+*.sgm
+*.sav
+*.sys
+*.sn*
+
+# converted image/palette/tilemap data
+*.1bpp
+*.2bpp
+*.pal
+*.tilemap
+*.attrmap
+
+# intermediate BG map files
+*.bgmap
+
+# compressed data
+*.lz
+
+# *disasm.py output file
+*disasm_output.asm
+
+# temporary / raw working directories
+raw_jpg/
+raw_full_cards/
+raw_artworks/
+raw_artwork_*/
+raw_full_*/
+
+# macOS metadata
+.DS_Store

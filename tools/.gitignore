@@ -1,0 +1,7 @@
+bgmap
+compressor
+gfx
+make_patch
+scan_includes
+
+*.exe

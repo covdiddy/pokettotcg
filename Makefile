@@ -1,0 +1,203 @@
+rom := poketcg.gbc
+patch := poketcg.patch
+patch_rom := poketcg_vc.gbc
+
+rom_obj := \
+	src/main.o \
+	src/home.o \
+	src/gfx.o \
+	src/text.o \
+	src/audio.o \
+	src/wram.o \
+	src/hram.o
+
+patch_obj := $(rom_obj:.o=_vc.o)
+
+
+### Build tools
+
+ifeq (,$(shell which sha1sum))
+SHA1 := shasum
+else
+SHA1 := sha1sum
+endif
+
+RGBDS ?=
+RGBASM  ?= $(RGBDS)rgbasm
+RGBFIX  ?= $(RGBDS)rgbfix
+RGBGFX  ?= $(RGBDS)rgbgfx
+RGBLINK ?= $(RGBDS)rgblink
+
+RGBASMFLAGS  ?= -Weverything -Wtruncation=1
+RGBLINKFLAGS ?= -Weverything -Wtruncation=1
+RGBFIXFLAGS  ?= -Weverything
+RGBGFXFLAGS  ?= -Weverything
+
+
+### Build targets
+
+.SUFFIXES:
+.SECONDEXPANSION:
+.PRECIOUS:
+.SECONDARY:
+.PHONY: all tcg patch clean tidy compare tools
+
+all: compare
+tcg: $(rom)
+patch: $(patch)
+
+clean: tidy
+	find src/gfx \
+	     \( -iname '*.1bpp' \
+	        -o -iname '*.2bpp' \
+	        -o -iname '*.pal' \) \
+	     -delete
+
+	find src/data \
+	     \( -iname '*.lz' \
+	        -o -iname '*.bgmap' \) \
+	     -delete
+
+tidy:
+	$(RM) $(rom) \
+	      $(rom:.gbc=.sym) \
+	      $(rom:.gbc=.map) \
+	      $(patch) \
+	      $(patch:.patch=_vc.gbc) \
+	      $(patch:.patch=_vc.sym) \
+	      $(patch:.patch=_vc.map) \
+	      $(patch:%.patch=src/vc/%.constants.sym) \
+	      $(rom_obj) \
+	      $(patch_obj) \
+	      src/rgbdscheck.o
+	$(MAKE) clean -C tools/
+
+compare: $(rom) $(patch)
+	@$(SHA1) -c rom.sha1
+
+tools:
+	$(MAKE) -C tools/
+
+
+RGBASMFLAGS += -I src/
+# Create a sym/map for debug purposes if `make` run with `DEBUG=1`
+ifeq ($(DEBUG),1)
+RGBASMFLAGS += -E
+endif
+
+$(rom_obj):   RGBASMFLAGS +=
+$(patch_obj): RGBASMFLAGS += -D _VC
+
+src/rgbdscheck.o: src/rgbdscheck.asm
+	$(RGBASM) -o $@ $<
+
+# Build tools when building the rom.
+# This has to happen before the rules are processed, since that's when scan_includes is run.
+ifeq (,$(filter clean tidy tools,$(MAKECMDGOALS)))
+
+$(info $(shell $(MAKE) -C tools))
+
+# The dep rules have to be explicit or else missing files won't be reported.
+# As a side effect, they're evaluated immediately instead of when the rule is invoked.
+# It doesn't look like $(shell) can be deferred so there might not be a better way.
+define DEP
+$1: $2 $$(shell tools/scan_includes -s -I src/ $2) | src/rgbdscheck.o
+	$$(RGBASM) $$(RGBASMFLAGS) -o $$@ $$<
+endef
+
+# Dependencies for objects
+$(foreach obj, $(rom_obj), $(eval $(call DEP,$(obj),$(obj:.o=.asm))))
+$(foreach obj, $(patch_obj), $(eval $(call DEP,$(obj),$(obj:_vc.o=.asm))))
+
+endif
+
+
+%.asm: ;
+
+
+RGBFIXFLAGS += -cjsv -k 01 -l 0x33 -m MBC5+RAM+BATTERY -p 0xff -r 03 -t POKECARD -i AXQE
+
+$(rom): $(rom_obj) src/layout.link
+	$(RGBLINK) $(RGBLINKFLAGS) -p 0xff -m $(rom:.gbc=.map) -n $(rom:.gbc=.sym) -l src/layout.link -w -o $@ $(filter %.o,$^)
+	$(RGBFIX) $(RGBFIXFLAGS) $@
+
+$(patch_rom): $(patch_obj) src/layout.link
+	$(RGBLINK) $(RGBLINKFLAGS) -p 0xff -m $(patch_rom:.gbc=.map) -n $(patch_rom:.gbc=.sym) -l src/layout.link -w -o $@ $(filter %.o,$^)
+	$(RGBFIX) $(RGBFIXFLAGS) $@
+
+$(patch): $(patch_rom) $(rom) src/vc/poketcg.patch.template
+	tools/make_patch $(patch_rom:.gbc=.sym) $^ $@
+
+
+### Misc file-specific graphics rules
+
+src/gfx/booster_packs/colosseum2.2bpp: RGBGFXFLAGS += -x 10
+src/gfx/booster_packs/evolution2.2bpp: RGBGFXFLAGS += -x 10
+src/gfx/booster_packs/laboratory2.2bpp: RGBGFXFLAGS += -x 10
+src/gfx/booster_packs/mystery2.2bpp: RGBGFXFLAGS += -x 10
+src/gfx/booster_packs/rocket2.2bpp: RGBGFXFLAGS += -x 10
+
+src/gfx/cards/neo/%.2bpp: src/gfx/cards/neo/%.png
+	$(RGBGFX) --columns -p $(@:.2bpp=.pal) -o $@ $<
+
+src/gfx/cards/%.2bpp: RGBGFXFLAGS += --columns --colors embedded --auto-palette
+
+src/gfx/duel/anims/result.2bpp: RGBGFXFLAGS += -x 10
+src/gfx/duel/dmg_sgb_symbols.2bpp: RGBGFXFLAGS += -x 7
+src/gfx/duel/other.2bpp: RGBGFXFLAGS += -x 3
+
+src/gfx/fonts/full_width/4.1bpp: RGBGFXFLAGS += -x 3
+
+src/gfx/link/card_pop_scene.2bpp: RGBGFXFLAGS += -x 3
+src/gfx/link/link_scene.2bpp: RGBGFXFLAGS += -x 3
+src/gfx/link/printer_scene.2bpp: RGBGFXFLAGS += -x 3
+
+src/gfx/overworld_map.2bpp: RGBGFXFLAGS += -x 15
+
+src/gfx/tilesets/challengehall.2bpp: RGBGFXFLAGS += -x 3
+src/gfx/tilesets/clubentrance.2bpp: RGBGFXFLAGS += -x 15
+src/gfx/tilesets/clublobby.2bpp: RGBGFXFLAGS += -x 8
+src/gfx/tilesets/fightingclub.2bpp: RGBGFXFLAGS += -x 13
+src/gfx/tilesets/fireclub.2bpp: RGBGFXFLAGS += -x 9
+src/gfx/tilesets/grassclub.2bpp: RGBGFXFLAGS += -x 9
+src/gfx/tilesets/hallofhonor.2bpp: RGBGFXFLAGS += -x 7
+src/gfx/tilesets/ishihara.2bpp: RGBGFXFLAGS += -x 3
+src/gfx/tilesets/lightningclub.2bpp: RGBGFXFLAGS += -x 13
+src/gfx/tilesets/masonlaboratory.2bpp: RGBGFXFLAGS += -x 9
+src/gfx/tilesets/pokemondome.2bpp: RGBGFXFLAGS += -x 1
+src/gfx/tilesets/pokemondomeentrance.2bpp: RGBGFXFLAGS += -x 2
+src/gfx/tilesets/psychicclub.2bpp: RGBGFXFLAGS += -x 6
+src/gfx/tilesets/rockclub.2bpp: RGBGFXFLAGS += -x 4
+src/gfx/tilesets/scienceclub.2bpp: RGBGFXFLAGS += -x 14
+src/gfx/tilesets/waterclub.2bpp: RGBGFXFLAGS += -x 15
+
+src/gfx/titlescreen/japanese_title_screen.2bpp: RGBGFXFLAGS += -x 15
+src/gfx/titlescreen/japanese_title_screen_cgb.2bpp: RGBGFXFLAGS += -x 15
+src/gfx/titlescreen/japanese_title_screen_2.2bpp: RGBGFXFLAGS += -x 12
+src/gfx/titlescreen/japanese_title_screen_2_cgb.2bpp: RGBGFXFLAGS += -x 5
+src/gfx/titlescreen/title_screen.2bpp: RGBGFXFLAGS += -x 4
+src/gfx/titlescreen/title_screen_cgb.2bpp: RGBGFXFLAGS += -x 12
+
+
+### Catch-all graphics rules
+
+%.png: ;
+
+%.pal: ;
+
+%.2bpp: %.png
+	$(RGBGFX) --colors dmg $(RGBGFXFLAGS) -o $@ $<
+	$(if $(tools/gfx),\
+		tools/gfx $(tools/gfx) -o $@ $@)
+
+%.1bpp: %.png
+	$(RGBGFX) --colors dmg $(RGBGFXFLAGS) --depth 1 -o $@ $<
+	$(if $(tools/gfx),\
+		tools/gfx $(tools/gfx) -d1 -o $@ $@)
+
+%.bgmap: %.bin ../dimensions/%.dimensions
+	tools/bgmap $(tools/bgmap) $^ $@
+
+# remove -m if you don't care for matching
+%.lz: %
+	tools/compressor -m $(tools/compressor) $< $@
